@@ -12,6 +12,7 @@
 import argparse
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -142,54 +143,64 @@ def main() -> int:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": ns.prompt},
     ]
-    log: list[str] = []
-    calls = 0
+    # 룰북 trace 예시 형식: [1] 모델의 요청 → [2] 하네스의 실행 결과 → [3] 결과를 읽은 최종 답
+    step1 = step2 = step3 = "(실행 전에 오류가 나서 기록 없음)"
     error_text = None
-    final = ""
     try:
-        while True:
-            resp = ollama.chat(model=MODEL, messages=messages, tools=tools,
-                               think=False, options={"temperature": 0})
-            msg = resp["message"]
-            messages.append(msg)
-            tcs = msg.get("tool_calls") or []
-            if not tcs:
-                final = msg.get("content") or ""
-                if not log:
-                    log.append("(모델이 도구를 요청하지 않음)")
-                break
-            for tc in tcs:
-                calls += 1
-                name, args = tc["function"]["name"], dict(tc["function"]["arguments"])
-                if calls > MAX_TOOL_CALLS:
-                    log.append(f"[중단] 도구 호출 {MAX_TOOL_CALLS}회 초과")
-                    raise StopIteration
+        r1 = ollama.chat(model=MODEL, messages=messages, tools=tools,
+                         think=False, options={"temperature": 0})
+        m1 = r1["message"]
+        messages.append(m1)
+        requests = [(tc["function"]["name"], dict(tc["function"]["arguments"]))
+                    for tc in (m1.get("tool_calls") or [])]
+        step1 = repr(requests)
+
+        if not requests:
+            step2 = "(실행한 도구 없음 — 모델이 도구를 요청하지 않음)"
+            step3 = (m1.get("content") or "").strip() or "(빈 답)"
+        else:
+            results = []
+            for name, args in requests[:MAX_TOOL_CALLS]:
                 result = run_tool(name, args, tool_names)
-                log.append(f"{calls}. {name}({json.dumps(args, ensure_ascii=False)})"
-                           f"\n   -> {json.dumps(result, ensure_ascii=False)}")
+                results.append(result)
                 messages.append({"role": "tool", "tool_name": name,
                                  "content": json.dumps(result, ensure_ascii=False)})
-    except StopIteration:
-        final = "(하네스가 중단함)"
+            step2 = json.dumps(results[0] if len(results) == 1 else results,
+                               ensure_ascii=False)
+            if len(requests) > MAX_TOOL_CALLS:
+                step2 += f"  (하네스 중단: 도구 요청 {len(requests)}개 중 {MAX_TOOL_CALLS}개만 실행)"
+            r2 = ollama.chat(model=MODEL, messages=messages, tools=tools,
+                             think=False, options={"temperature": 0})
+            m2 = r2["message"]
+            step3 = (m2.get("content") or "").strip() or "(빈 답)"
+            extra = m2.get("tool_calls") or []
+            if extra:
+                step3 += f"  (모델이 도구를 추가로 요청했으나 실행하지 않음: " \
+                         f"{[(tc['function']['name'], dict(tc['function']['arguments'])) for tc in extra]})"
     except Exception as e:  # 오류는 그대로 기록한다
         error_text = f"{type(e).__name__}: {e}"
 
     path = next_trace_path()
+    command = "python " + subprocess.list2cmdline(sys.argv)
     body = f"""== 실행 조건 ==
-날짜: {datetime.now().astimezone().isoformat(timespec='seconds')}
-모델 / 온도: {MODEL} / 0 (think=False)
-시스템 지시 버전: lab-v1
+날짜: {datetime.now().date().isoformat()}
+모델: {MODEL}
+온도: 0 (think=False)
+실행 명령: {command}
 도구 설명 버전: get_inventory desc-{ns.desc_variant}
 실험 의도: {ns.note or '-'}
 
 == 요청 ==
 {ns.prompt}
 
-== 선택한 도구와 인자, 반환 근거 ==
-{chr(10).join(log) if log else '(없음)'}
+== [1] 모델의 요청 ==
+[1] 모델의 요청: {step1}
 
-== 최종 답 ==
-{final.strip() or '(없음)'}
+== [2] 하네스의 실행 결과 ==
+[2] 하네스의 실행 결과: {step2}
+
+== [3] 결과를 읽은 최종 답 ==
+[3] 결과를 읽은 최종 답: {step3}
 """
     if error_text:
         body += f"\n== 오류(그대로 기록) ==\n{error_text}\n"
