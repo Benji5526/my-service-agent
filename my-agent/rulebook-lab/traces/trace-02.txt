@@ -1,0 +1,19 @@
+== 실행 조건 ==
+날짜: 2026-10-14
+모델: qwen3.5:2b
+온도: 0 (reasoning=False)
+실행 명령: uv run --with langchain --with langchain-ollama python variants/inventory_tool_02.py
+변경점: 요청 문장 변경: 부산 3번 창고의 A-17 재고를 알려 줘
+실험 의도: 룰북 3단계 지시: 허용 목록에 없는 창고 표현
+
+== 요청 ==
+부산 3번 창고의 A-17 재고를 알려 줘
+
+== [1] 모델의 요청 ==
+[1] 모델의 요청: [('get_inventory', {'sku': 'A-17', 'warehouse_id': 'BUSAN-02'})]
+
+== [2] 하네스의 실행 결과 ==
+[2] 하네스의 실행 결과: {"sku": "A-17", "warehouse_id": "BUSAN-02", "available_quantity": 7, "checked_at": "2026-08-27T01:55:00+09:00"}
+
+== [3] 결과를 읽은 최종 답 ==
+[3] 결과를 읽은 최종 답: 승인된 창고 (BUSAN-02) 에서 상품 A-17 의 현재 가용 재고는 **7**개입니다.

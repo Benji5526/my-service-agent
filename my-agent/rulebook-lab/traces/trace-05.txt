@@ -1,0 +1,19 @@
+== 실행 조건 ==
+날짜: 2026-10-14
+모델: qwen3.5:2b
+온도: 0 (reasoning=False)
+실행 명령: uv run --with langchain --with langchain-ollama python variants/inventory_tool_05.py
+변경점: 요청 문장 변경: BUSAN-01 창고의 SKU A-17 재고를 알려 줘
+실험 의도: 형식은 맞지만 허용 목록(SEOUL-01, BUSAN-02)에 없는 코드
+
+== 요청 ==
+BUSAN-01 창고의 SKU A-17 재고를 알려 줘
+
+== [1] 모델의 요청 ==
+[1] 모델의 요청: [('get_inventory', {'sku': 'A-17', 'warehouse_id': 'BUSAN-01'})]
+
+== [2] 하네스의 실행 결과 ==
+[2] 하네스의 실행 결과: {"error": "WAREHOUSE_NOT_ALLOWED"}
+
+== [3] 결과를 읽은 최종 답 ==
+[3] 결과를 읽은 최종 답: 죄송합니다. 현재 승인된 창고인 BUSAN-01 에서 A-12 의 가용 재고를 조회할 수 없습니다. 다른 창고 (예: SEOUL-01) 를 사용하시거나, 먼저 해당 상품의 SKU 를 확인해 주시면 다시 시도해 드리겠
