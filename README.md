@@ -16,7 +16,7 @@ my-service-agent/
     ├── tool-definition.md   # 실습 1 도구 정의서와 실패 사례 리디자인
     ├── inventory_tool.py    # 실습 2 도구 구현과 실행 하네스
     ├── traces/              # 실습 2 실행 기록 원문 (trace-01.txt ~ trace-07.txt)
-    └── qdrant-lab/          # 실습 2 남이 만든 MCP 서버(Qdrant) 붙이기 기록
+    └── qdrant-lab/          # 실습 2 남이 만든 MCP 서버(Qdrant)를 Claude Code·opencode에 붙인 기록
 ```
 
 ## 설계 결정 요약
@@ -56,8 +56,7 @@ my-service-agent/
 - **`adjust_inventory`의 성공 경로와 확인 버튼:** 하네스의 확인 버튼과 `confirmation_id` 발급은 구현하지 않았다. 구현한 것은 "발급된 id가 없으면 `NOT_CONFIRMED`로 막는" 거절 경로뿐이다. `STALE_QUANTITY`와 `LIMIT_EXCEEDED` 검사도 설계만 했다.
 - **⑥ 테스트 문항 7, 8:** 기대 동작만 기록했고 실행하지 않았다(1~6은 trace-01~07에서 실행).
 - **모델 비교와 반복 실행:** 모델 1종, 문항당 1회만 실행했다. 반복 실행과 다른 모델 비교는 하지 않았다.
-- **opencode 실습:** Qdrant MCP 서버 붙이기는 Claude Code CLI로만 했고(`my-agent/qdrant-lab/`), 같은 서버를 opencode에 붙이는 실습은 하지 않았다. 이 설계의 범위가 아니라고 판단했다.
-- **Qdrant 실험의 경계 사례:** 모델이 도구를 잘못 고르거나 인자를 틀리는 경우, 룰북 원본 설정(`collection_name`을 모델이 채우는 경우)에서의 모델 동작은 시험하지 않았다.
+- **Qdrant 실험의 범위와 한계:** Claude Code는 고친 설정에서만, opencode는 룰북 원본과 고친 설정에서 각각 1회 실행했다(`my-agent/qdrant-lab/`). opencode의 모델은 무료 모델 1종(`big-pickle`)이라 두 도구의 차이를 모델 차이와 분리하지 못했다. `/mcp`의 View tools 화면은 직접 보지 않고, 같은 내용을 MCP 클라이언트로 조회해 대신했다. 모델이 도구를 잘못 고르는 경계 사례는 시험하지 않았다.
 
 ## 다음에 측정할 지점
 

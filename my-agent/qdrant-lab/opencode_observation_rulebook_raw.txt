@@ -1,0 +1,22 @@
+TOOL #1 qdrant_qdrant-store status=completed
+  input  = {"collection_name": "default", "information": "환불은 구매 후 7일 이내에 가능하다."}
+  output = Remembered: 환불은 구매 후 7일 이내에 가능하다. in collection default
+TOOL #2 qdrant_qdrant-store status=completed
+  input  = {"collection_name": "default", "information": "배송은 영업일 기준 2일이 걸린다."}
+  output = Remembered: 배송은 영업일 기준 2일이 걸린다. in collection default
+TOOL #3 qdrant_qdrant-store status=completed
+  input  = {"collection_name": "default", "information": "회원 등급은 매월 1일에 갱신된다."}
+  output = Remembered: 회원 등급은 매월 1일에 갱신된다. in collection default
+TOOL #4 qdrant_qdrant-find status=completed
+  input  = {"collection_name": "default", "query": "환불 기한이 어떻게 돼?"}
+  output = [
+  "Results for the query '환불 기한이 어떻게 돼?'",
+  "<entry><content>환불은 구매 후 7일 이내에 가능하다.</content><metadata></metadata></entry>",
+  "<entry><content>회원 등급은 매월 1일에 갱신된다.</content><metadata></metadata></entry>",
+  "<entry><content>배송은 영업일 기준 2일이 걸린다.</content><metadata></metadata></entry>"
+]
+TEXT: 세 문장을 저장했습니다. "환불 기한이 어떻게 돼?"와 가장 유사한 문장은:
+
+1. **환불은 구매 후 7일 이내에 가능하다.** (가장 유사)
+2. 회원 등급은 매월 1일에 갱신된다.
+3. 배송은 영업일 기준 2일이 걸린다.

@@ -8,13 +8,17 @@
 |---|---|
 | 서버가 노출하는 도구와 인자 스키마 | **확인함** (MCP 클라이언트로 직접 조회) |
 | `qdrant-store`로 저장, `qdrant-find`로 검색한 동작 | **확인함** (같은 방식으로 직접 호출) |
-| 모델(Claude Code)이 어떤 도구를 고르고 어떤 인자를 채우는가 | **관찰함** (직접 실행한 세션 기록, 아래 "모델 관찰") |
-| `/mcp`에서 reconnect | **함** (`Reconnected to qdrant.`) |
+| 모델(Claude Code)이 어떤 도구를 고르고 어떤 인자를 채우는가 | **관찰함** (직접 실행한 세션 기록, 아래 "모델 관찰 (Claude Code)") |
+| 모델(opencode)이 같은 일을 하는 모습, 룰북 원본 설정과 고친 설정 각각 | **관찰함** (`opencode run`, 아래 "모델 관찰 (opencode)") |
+| `/mcp`에서 reconnect (Claude Code) | **함** (`Reconnected to qdrant.`) |
+| `/mcps`에서 qdrant 확인 (opencode) | **함** (`opencode mcp list`: `qdrant connected`) |
 | `/mcp`의 View tools 화면 | **하지 않음** (같은 내용을 MCP 클라이언트로 직접 조회해 대신함) |
 
 처음에는 Claude 계정 로그인이 만료되어 모델 호출이 막혀 있었다(`claude -p`: `OAuth session expired`, 직접 연 `claude`: `Login expired`). 이 환경에서 띄운 `claude -p`의 시스템 정보에서는 `qdrant` 서버 상태가 `failed`였는데, 서버를 따로 띄우면 정상 동작하므로 첫 실행에 임베딩 모델을 내려받는 시간 때문일 가능성이 있다(추정, 확인하지 않음). 재로그인 후 직접 연 `claude`에서는 서버 연결과 호출이 모두 정상이었다.
 
 ## 모델 관찰 (Claude Code, 고친 `.mcp.json`)
+
+(opencode 결과는 이 절 다음의 "모델 관찰 (opencode)"에 있다. 모델이 다르므로 두 결과의 차이를 도구나 설정 탓으로만 돌릴 수 없다.)
 
 세션 기록에서 뽑은 도구 호출 원문은 `model_observation_raw.txt`에 있다. 입력은 룰북 예시 문장 그대로다.
 
@@ -32,7 +36,35 @@
 - **검색 순위는 직접 호출 때와 같았다.** 고친 설정으로 서버를 직접 호출했을 때의 순서(환불, 배송, 회원 등급)와 일치한다.
 - **최종 답의 서술은 도구 결과와 맞았다.** 모델은 "유사도 점수를 보여 주지 않는다", "문장이 3개뿐이라 관련 없는 문장도 모두 나왔다"고 답했고, 두 말 모두 반환 원문(점수 필드 없음, 3개 전부 반환)과 일치한다.
 
-한계: 1회 실행이고, 도구 호출이 모두 성공한 정상 경로다. 모델이 도구를 잘못 고르거나 인자를 잘못 채우는 경계 사례(예: 저장하라고 하지 않았는데 저장, 컬렉션 이름 추측)는 시험하지 않았다.
+한계: 1회 실행이고, 도구 호출이 모두 성공한 정상 경로다. 룰북 원본 설정에서 Claude Code가 어떻게 하는지는 시험하지 못했다(opencode로는 시험함, 아래).
+
+## 모델 관찰 (opencode)
+
+opencode 1.18.30, 모델은 로그인 없이 쓸 수 있는 무료 모델 `opencode/big-pickle`이다. `opencode run --format json`으로 룰북 예시 입력을 그대로 보냈다. 호출 원문은 `opencode_observation_raw.txt`(고친 설정)와 `opencode_observation_rulebook_raw.txt`(룰북 원본 설정)에 있다. 설정 파일은 룰북 `opencode.json`을 고친 `opencode.json`과 원본을 보관한 `opencode-rulebook.json`이다. 도구 이름은 opencode에서 `qdrant_qdrant-store`, `qdrant_qdrant-find`로 붙는다.
+
+| 구분 | 고친 설정 | 룰북 원본 설정 |
+|---|---|---|
+| 서버 연결 | `opencode mcp list`: connected | 같음: connected |
+| `qdrant-store` 호출 | 문장마다 1회, 3번 | 문장마다 1회, 3번 |
+| `qdrant-store`의 `metadata` | **모델이 지어 넣음**: `{"category": "policy", "topic": "refund"}` 등 | 넣지 않음 |
+| `collection_name` | 인자에 없음 | 모델이 **`"default"`로 채움** (룰북이 의도한 `policies`가 아님) |
+| 저장된 컬렉션 | `policies` | `default` |
+| `qdrant-find`의 `query` | 사용자 문장 그대로 | 사용자 문장 그대로 |
+| 검색 순위 | 환불 → 배송 → 회원 등급 | 환불 → 회원 등급 → 배송 |
+| 오류 | 없음 | 없음 |
+
+관찰
+- **룰북 원본 설정에서 모델이 컬렉션 이름을 지어냈다.** 도구 정의가 `collection_name`을 필수로 요구하는데 값을 알려 주는 곳이 없어서, 모델이 `"default"`라고 채웠다. 서버는 이를 거부하지 않고 `default` 컬렉션을 만들어 저장했다. 호출은 성공이지만 의도(`policies`)와 다른 곳에 저장된 것이다. 환경변수 이름 오류(발견 1) 때문에 `COLLECTION_NAME`이 무시된 결과가 모델의 추측으로 이어졌다.
+- **고친 설정에서는 모델이 `metadata`를 요청받지 않았는데 채웠다.** 같은 입력에서 Claude Code는 `metadata`를 비워 두었다. 도구 설명이 "Any json is accepted"라 어떤 값이든 허용되기 때문에, 모델에 따라 채우는 정도가 달라진다.
+- **최종 답에 모델의 생각 표시가 섞여 나왔다.** 고친 설정 실행의 답변 텍스트에 영어 계획 문장과 `</think>` 태그가 그대로 출력됐다. 도구가 아니라 이 무료 모델의 출력 형식 문제로 보이며, 도구 호출 결과에는 영향이 없었다.
+- **검색 순위는 설정마다 다르게 나왔다.** 고친 설정은 직접 호출 때와 같은 순서였고, 룰북 원본 설정은 두 번째와 세 번째가 바뀌었다(기본 임베딩 모델 `all-MiniLM-L6-v2`를 쓰기 때문으로 추정된다).
+- **"가장 유사" 판단은 순서만으로 한 것이다.** 모델은 첫 항목을 "가장 유사/관련도 최상위"라고 답했지만 도구는 점수를 주지 않는다. 순서가 유사도 순이라고 가정한 서술이다.
+
+실행 중 겪은 일
+- **룰북 원본 설정의 첫 실행이 280초 동안 출력 없이 시간 초과(exit 124)로 끝났다.** 같은 입력으로 다시 실행하니 약 12초 만에 정상 완료됐고, 그 사이 다른 점은 로그를 켠 것뿐이다. 첫 실행의 원인은 알 수 없다(무료 모델 응답 지연 등 일시적 문제로 추정, 확인하지 못함). 그래서 위 표는 두 번째 실행의 기록이다.
+- 같은 설정에서 짧은 요청("`qdrant-find`로 환불을 검색해 줘")을 한 번 시험했을 때, 모델이 컬렉션 이름을 알아내려고 `curl http://localhost:6333/collections`를 실행하려 하고 홈 설정 폴더를 읽으려 했다(후자는 권한 없어 자동 거절됨). 이 시험은 룰북 입력이 아니라 본 표에 넣지 않았다. 필수 인자의 값을 알 수 없을 때 모델이 도구 밖으로 나가 탐색하려는 경향의 단서로만 적는다.
+
+한계: 모델 1종(`big-pickle`), 설정당 1회 실행이다. Claude Code와 opencode의 차이는 모델 차이를 분리하지 못한다.
 
 ## 발견 1 — 룰북 JSON의 환경변수 이름이 서버가 읽는 이름과 다르다
 
@@ -85,21 +117,30 @@
 
 ## 재현
 
+서버 직접 호출 (LLM 없음):
+
 ```bash
 cd my-agent/qdrant-lab
 uv run --with mcp python probe_server.py rulebook    # 룰북 .mcp.json의 env 그대로
 uv run --with mcp python probe_server.py corrected   # 서버가 읽는 이름으로 고친 env
 ```
 
-Claude Code로 직접 확인하려면 이 폴더에서 `claude`를 실행한다. `.mcp.json`은 고친 설정이고, 룰북 원본 설정은 `mcp.rulebook.json`에 보관했다(Claude Code가 읽지 않도록 이름에서 앞의 점을 뺐다).
+모델로 확인하려면 이 폴더에서 `claude`(Claude Code) 또는 `opencode`를 실행하고 룰북 예시 입력을 넣는다. 이 폴더의 `.mcp.json`과 `opencode.json`은 고친 설정이다. 룰북 원본 설정을 시험하려면 `mcp.rulebook.json`, `opencode-rulebook.json`의 내용을 각각 `.mcp.json`, `opencode.json`으로 바꿔 쓴다(두 파일은 이름에 점을 빼거나 `-rulebook`을 붙여 도구가 읽지 않게 했다).
+
+```bash
+opencode mcp list                                   # qdrant connected 확인
+opencode run -m opencode/big-pickle --format json "<룰북 예시 입력>"
+```
 
 ## 이 폴더의 파일
 
 | 파일 | 내용 |
 |---|---|
 | `qdrant-experiment.md` | 이 문서 |
-| `.mcp.json` | 고친 설정 (서버가 읽는 환경변수 이름 사용) |
-| `mcp.rulebook.json` | 룰북 원본 설정 |
+| `.mcp.json`, `mcp.rulebook.json` | Claude Code용 설정: 고친 것 / 룰북 원본 |
+| `opencode.json`, `opencode-rulebook.json` | opencode용 설정: 고친 것 / 룰북 원본 |
 | `probe_server.py` | 서버를 MCP 클라이언트로 직접 호출해 도구 정의와 저장·검색을 기록하는 스크립트 |
-| `probe_rulebook.txt`, `probe_corrected.txt` | 위 스크립트의 두 설정별 출력 원문 |
+| `probe_rulebook.txt`, `probe_corrected.txt` | 위 스크립트의 설정별 출력 원문 |
 | `model_observation_raw.txt` | Claude Code 세션에서 뽑은 도구 호출 원문 |
+| `opencode_observation_raw.txt` | opencode 도구 호출 원문 (고친 설정) |
+| `opencode_observation_rulebook_raw.txt` | opencode 도구 호출 원문 (룰북 원본 설정) |

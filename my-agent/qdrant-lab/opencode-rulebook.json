@@ -1,0 +1,14 @@
+{
+  "mcp": {
+    "qdrant": {
+      "type": "local",
+      "command": ["uvx", "mcp-server-qdrant"],
+      "environment": {
+        "QDRANT_URL": ":memory:",
+        "QDRANT_COLLECTION": "policies",
+        "EMBEDDER_PROVIDER": "fastembed",
+        "FASTEMBED_MODEL": "BAAI/bge-small-en-v1.5"
+      }
+    }
+  }
+}
