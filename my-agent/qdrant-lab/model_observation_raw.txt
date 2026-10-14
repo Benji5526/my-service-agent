@@ -1,0 +1,25 @@
+CALL #1 ToolSearch
+  input = {"query": "select:mcp__qdrant__qdrant-store,mcp__qdrant__qdrant-find", "max_results": 2}
+  RESULT(ToolSearch) is_error=None
+   
+CALL #2 mcp__qdrant__qdrant-store
+  input = {"information": "환불은 구매 후 7일 이내에 가능하다."}
+CALL #3 mcp__qdrant__qdrant-store
+  input = {"information": "배송은 영업일 기준 2일이 걸린다."}
+CALL #4 mcp__qdrant__qdrant-store
+  input = {"information": "회원 등급은 매월 1일에 갱신된다."}
+  RESULT(mcp__qdrant__qdrant-store) is_error=None
+  Remembered: 환불은 구매 후 7일 이내에 가능하다. in collection policies
+  RESULT(mcp__qdrant__qdrant-store) is_error=None
+  Remembered: 배송은 영업일 기준 2일이 걸린다. in collection policies
+  RESULT(mcp__qdrant__qdrant-store) is_error=None
+  Remembered: 회원 등급은 매월 1일에 갱신된다. in collection policies
+CALL #5 mcp__qdrant__qdrant-find
+  input = {"query": "환불 기한이 어떻게 돼?"}
+  RESULT(mcp__qdrant__qdrant-find) is_error=None
+  [
+  "Results for the query '환불 기한이 어떻게 돼?'",
+  "<entry><content>환불은 구매 후 7일 이내에 가능하다.</content><metadata></metadata></entry>",
+  "<entry><content>배송은 영업일 기준 2일이 걸린다.</content><metadata></metadata></entry>",
+  "<entry><content>회원 등급은 매월 1일에 갱신된다.</content><metadata></metadata></entry>"
+]

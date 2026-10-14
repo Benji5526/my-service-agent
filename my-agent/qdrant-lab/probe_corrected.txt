@@ -1,0 +1,79 @@
+##### variant = corrected
+env = {
+ "QDRANT_URL": ":memory:",
+ "COLLECTION_NAME": "policies",
+ "EMBEDDING_PROVIDER": "fastembed",
+ "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5"
+}
+
+== tools ==
+- qdrant-find
+  description: Look up memories in Qdrant. Use this tool when you need to: 
+ - Find memories by their content 
+ - Access memories for further analysis 
+ - Get some personal information about the user
+  inputSchema: {
+ "properties": {
+  "query": {
+   "description": "What to search for",
+   "title": "Query",
+   "type": "string"
+  }
+ },
+ "required": [
+  "query"
+ ],
+ "type": "object"
+}
+- qdrant-store
+  description: Keep the memory for later use, when you are asked to remember something.
+  inputSchema: {
+ "properties": {
+  "information": {
+   "description": "Text to store",
+   "title": "Information",
+   "type": "string"
+  },
+  "metadata": {
+   "anyOf": [
+    {
+     "additionalProperties": true,
+     "type": "object"
+    },
+    {
+     "type": "null"
+    }
+   ],
+   "default": null,
+   "description": "Extra metadata stored along with memorised information. Any json is accepted.",
+   "title": "Metadata"
+  }
+ },
+ "required": [
+  "information"
+ ],
+ "type": "object"
+}
+
+collection_name 이 도구 인자로 노출됨: False
+
+== qdrant-store ==
+store '환불은 구매 후 7일 이내에 가능하다.' -> isError=False ['Remembered: 환불은 구매 후 7일 이내에 가능하다. in collection policies']
+store '배송은 영업일 기준 2일이 걸린다.' -> isError=False ['Remembered: 배송은 영업일 기준 2일이 걸린다. in collection policies']
+store '회원 등급은 매월 1일에 갱신된다.' -> isError=False ['Remembered: 회원 등급은 매월 1일에 갱신된다. in collection policies']
+
+== qdrant-find ==
+find '환불 기한이 어떻게 돼?' -> isError=False
+    [
+  "Results for the query '환불 기한이 어떻게 돼?'",
+  "<entry><content>환불은 구매 후 7일 이내에 가능하다.</content><metadata>{\"source\": \"lab\"}</metadata></entry>",
+  "<entry><content>배송은 영업일 기준 2일이 걸린다.</content><metadata>{\"source\": \"lab\"}</metadata></entry>",
+  "<entry><content>회원 등급은 매월 1일에 갱신된다.</content><metadata>{\"source\": \"lab\"}</metadata></entry>"
+]
+find '배송은 며칠 걸려?' -> isError=False
+    [
+  "Results for the query '배송은 며칠 걸려?'",
+  "<entry><content>배송은 영업일 기준 2일이 걸린다.</content><metadata>{\"source\": \"lab\"}</metadata></entry>",
+  "<entry><content>회원 등급은 매월 1일에 갱신된다.</content><metadata>{\"source\": \"lab\"}</metadata></entry>",
+  "<entry><content>환불은 구매 후 7일 이내에 가능하다.</content><metadata>{\"source\": \"lab\"}</metadata></entry>"
+]

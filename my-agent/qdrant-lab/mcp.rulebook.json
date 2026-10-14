@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "qdrant": {
+      "command": "uvx",
+      "args": ["mcp-server-qdrant"],
+      "env": {
+        "QDRANT_URL": ":memory:",
+        "QDRANT_COLLECTION": "policies",
+        "EMBEDDER_PROVIDER": "fastembed",
+        "FASTEMBED_MODEL": "BAAI/bge-small-en-v1.5"
+      }
+    }
+  }
+}
